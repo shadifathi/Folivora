@@ -1,0 +1,91 @@
+# Grimsel — liquid flow through three fracture zones.
+# NOTE: mesh sizes here are demo-coarse. For production use
+#   domain.lc ~8, fracture lc ~2, refine {size_min: 1, dist_max: 20}
+# which is what the notebooks used — expect ~10^6-10^7 tets.
+# Reproduces Untitled-1.ipynb + Grimsel_GM.ipynb, declaratively.
+name: grimsel_lf
+workdir: ../work/grimsel_lf
+
+# --- geometry -------------------------------------------------------------
+domain:
+  xmin: -150
+  xmax: 150
+  ymin: -120
+  ymax: 200
+  zmin: -100
+  zmax: 0
+  lc: 20.0
+  name: Rock
+  material_id: 0
+
+# The three-point triples are the ones from Grimsel_GM cell 2 that were
+# commented in and out. They now coexist instead of overwriting each other.
+fractures:
+  - name: FZ1
+    points: [[-7.0, 18.5, -9.4], [1.13, 28.95, -8.8], [16.9, 33.1, -8.07]]
+    half_size: 100
+    representation: surface
+    conform: fragment   # crosses FZ2 -> intersection must be imprinted
+    lc: 6.0
+    material_id: 1
+    refine: {size_min: 4.0, size_max: 20.0, dist_min: 4.0, dist_max: 25.0}
+
+  - name: FZ2
+    points: [[-15.92, 26.7, -18.1], [-0.54, 34.37, -15.8], [16.21, 41.73, -14.23]]
+    half_size: 20          # steeply dipping: >22 leaves the domain through z=0
+    representation: volume  # thin 3D layer, as in FaultedCubeMesh
+    thickness: 0.1
+    lc: 6.0
+    material_id: 2
+
+  - name: FZ3
+    points: [[-18.7, 20.1, -20.7], [-1.09, 36.18, -18.12], [16.03, 44.1, -15.9]]
+    half_size: 100
+    representation: surface
+    conform: fragment   # crosses FZ2 -> intersection must be imprinted
+    lc: 6.0
+    material_id: 3
+    refine: {size_min: 4.0, size_max: 20.0, dist_min: 4.0, dist_max: 25.0}
+
+mesh_options:
+  algorithm_3d: 1
+  optimize: 2
+  msh_version: 2.2
+
+# --- process --------------------------------------------------------------
+process:
+  type: LIQUID_FLOW
+
+meshes: [grimsel_lf.vtu, FZ1.vtu, FZ3.vtu]
+output_prefix: LFModel1
+t_initial: 0.0
+t_end: 400.0
+output_variables: [pressure, v]
+
+materials:
+  - {id: 0, name: rock, permeability: 1e-17, porosity: 0.01, storage: 1e-9, reference_temperature: 303}
+  - {id: 1, name: FZ1,  permeability: 1e-13, porosity: 0.4,  storage: 1e-5, reference_temperature: 303}
+  - {id: 2, name: FZ2,  permeability: 1e-13, porosity: 0.4,  storage: 1e-5, reference_temperature: 303}
+  - {id: 3, name: FZ3,  permeability: 1e-13, porosity: 0.4,  storage: 1e-5, reference_temperature: 303}
+
+parameters:
+  p0: 0.0
+  p_inj: 8e5
+  pressure_ic: 0.0
+
+process_variables:
+  pressure:
+    components: 1
+    order: 1
+    initial_condition: pressure_ic
+    boundary_conditions:
+      - {mesh: FZ1, type: Dirichlet, parameter: p_inj}
+      - {mesh: FZ3, type: Dirichlet, parameter: p0}
+
+# Anything not covered above: raw prj tree, merged last.
+overrides:
+  time_loop:
+    processes:
+      process:
+        time_stepping:
+          maximum_dt: 20.0

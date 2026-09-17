@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ogsfrac"
+version = "0.2.0"
+description = "Geometry, meshing and project files for OpenGeoSys simulations of fractured rock"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "gmsh>=4.11",
+    "meshio>=5.3",
+    "PyYAML>=6.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+post = ["pyvista>=0.43", "matplotlib>=3.7", "scipy>=1.11"]
+ui = ["streamlit>=1.49", "plotly>=5.18"]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+ogsfrac = "ogsfrac.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ogsfrac*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
